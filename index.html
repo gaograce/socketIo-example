@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO chat</title>
+    <style>
+        html {height: 100%}
+        body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100%}
+
+        #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+        #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+        #input:focus { outline: none; }
+        #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+        #messages { list-style-type: none; margin: 0; padding: 0; }
+        #messages > li, #users > li { padding: 0.5rem 1rem;}
+        #users > li {list-style-type: none; cursor: pointer;}
+        /*#messages > li:nth-child(odd) { background: #efefef; }*/
+        .mySelf {background: #073907; color: white;}
+        .selected {background: white; color: #333333}
+        .private {background: darkred; color: white;}
+        .meTome {background: darkorange; color: white;}
+        .me {color: green}
+    </style>
+</head>
+<body style="overflow: hidden">
+<div style="position: fixed;height: 60px; background: black;width: 100%;color: white;font-size: 30px;">
+    <div style="padding: 10px">A Chat Room</div></div>
+<div style="position: fixed;width: 270px;height: calc(100% - 110px); background: #444444; color: white;left: 0;top: 60px;border-right: 1px solid #444444">
+    <ul id="users" style="padding-inline-start: 0"></ul>
+</div>
+<div style="position: absolute; left: 280px; width: calc(100% - 280px); top: 120px; overflow: auto;height: calc(100% - 130px)">
+    <ul id="messages"></ul>
+</div>
+
+<form id="form" action="">
+    <input id="input" autocomplete="off" /><button>Send</button>
+</form>
+<script src="/socket.io/socket.io.js"></script>
+<script src="./jquery.min.js"></script>
+<script>
+    let socket = io()
+    let messages = document.getElementById('messages')
+    let form = document.getElementById('form')
+    let input = document.getElementById('input')
+    let userList = document.getElementById('users')
+    let selected = 'all'
+
+    function connect() {
+        //指定昵称
+        //let socket = io("http://localhost:30001", {autoConnect: false})
+        socket.auth = {name: 'Lily'}
+        socket.connect()
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault()
+        if (input.value) {
+            socket.emit('chat message', {msg: input.value, to: selected})
+            input.value = ''
+        }
+    })
+
+    socket.on('users', function (users) {
+        let ul = document.createElement('ul')
+        let li = document.createElement('li')
+        li.textContent = 'all'
+        li.className = 'selected'
+        ul.appendChild(li)
+        for(let user of users) {
+            let li = document.createElement('li')
+            li.textContent = user
+            ul.appendChild(li)
+            if(user == socket.id) {
+                li.className = 'me'
+            }
+        }
+        userList.innerHTML = ul.innerHTML
+        $("#users li").click(function () {
+            $(this).siblings('li').removeClass('selected')
+            $(this).addClass('selected')
+            selected = $(this).text()
+        })
+    })
+
+
+    socket.on('chat message', function (msg) {
+        let item = document.createElement('li')
+        let from  = msg.from
+        let to = msg.to
+        if(from == socket.id && to == socket.id) {
+            item.className = 'meTome'
+            from = 'me'
+            to = 'me'
+        } else if(from == socket.id) {
+            item.className = "mySelf"
+            from = 'me'
+        } else if(to == socket.id) {
+            item.classList.add('private')
+            to = 'me'
+        }
+        item.textContent = `[From ${from} To ${to}]: ${msg.msg}`
+        messages.appendChild(item)
+        item.scrollIntoView()
+        //window.scrollTo(0, document.body.scrollHeight)
+    })
+</script>
+</body>
+</html>
